@@ -1,3 +1,164 @@
+# ORB-SLAM 3
+
+This repository contains the code to use ORB-SLAM 3 with [Insta360 GO 3 camera](https://www.insta360.com/product/insta360-go3).
+
+## Installation
+
+The following is the installation guide for ORB-SLAM 3 tested on Ubuntu 22.04
+
+1. Install all liberay dependencies.
+
+    ```shell
+    sudo add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main"
+    sudo apt update
+
+    sudo apt-get install build-essential
+    sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
+
+    sudo apt-get install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev libjasper-dev
+
+    sudo apt-get install libglew-dev libboost-all-dev libssl-dev
+
+    sudo apt install libeigen3-dev
+    ```
+
+2. Install OpenCV
+
+    ```shell
+    sudo apt install libopencv-dev
+    ```
+
+    The version I installed is `4.5.4`
+
+3. Install Pangolin
+    ```shell
+    cd ~/Dev
+    git clone https://github.com/stevenlovegrove/Pangolin.git
+    cd Pangolin 
+    mkdir build 
+    cd build 
+    cmake .. -D CMAKE_BUILD_TYPE=Release 
+    make -j 3 
+    sudo make install
+    ```
+
+4. Install ORB-SLAM 3
+    ```shell
+    cd ~/Dev
+    git clone https://github.com/wensi-ai/ORB_SLAM3.git 
+    cd ORB_SLAM3
+    ./build.sh
+    ```
+
+5. Create a conda env with `numpy`, `matplotlib`, `scipy`, `opencv-python` installed.
+---
+
+## Camera Calibration
+
+You can skip this step if you are running the provided example videos as they already work with [insta360_fisheye.yaml](Examples/insta360_fisheye.yaml).
+
+Camera calibration is very important to get good tracking results, especially when performing visual-inertial SLAM. Please take a look at the [calibration tutorial](Calibration_Tutorial.pdf) to get a deeper understanding of how calibration works.
+
+Here, we provide a calibration tutorial for Go 3 camera using [Kalibr](https://github.com/ethz-asl/kalibr).
+
+1. Install Kalibr
+    ```shell
+    git clone https://github.com/ethz-asl/kalibr.git
+    cd kalibr
+    docker build -t kalibr -f Dockerfile_ros1_20_04 .
+    ```
+
+2. Prepare calibration videos
+
+    You will need to prepare 2 yaml files for measured imu noise and apriltag info respectively, and 2 videos for camera and imu calibration. Name the files and put them in a folder structure like this:
+
+    ```
+    - calibration_folder
+      - cam
+        - cam.mp4
+      - cam_imu
+        - cam_imu.mp4
+      - imu_noise.yaml
+      - kalibr_apriltag.yaml
+    ```
+    
+    We provide a set of [Example files](https://drive.google.com/file/d/1EMvitLiBgj8vOtFHUTYvecs3awehp-Z1/view?usp=sharing) that you can use to test out the calibration process.
+
+  3. Navigate to [calibrate_insta360_kalibr.sh](scripts/calibrate_insta360_kalibr.sh), and change the `BASEPATH` and `DATASET` variables accordingly.
+
+  4. Run the following command to calibrate
+      ```shell
+      ./scripts/calibrate_insta360_kalibr.sh
+      ```
+  5. Copy the results from the generated pdf report files to [insta360_fisheye.yaml](Examples/insta360_fisheye.yaml).
+
+## Run Insta360 Example
+
+1. Prepare you video files. We provide [2 example video files](https://drive.google.com/file/d/1SBb1YXNdROVeIDRS4Q7JnGCJ1-LixNAZ/view?usp=sharing) recorded with Go 3.  
+
+2. Navigate to the ORB-SLAM 3 folder and run the telemetry extraction script
+    ```shell
+    python scripts/insta360_extract_telemetry.py -i $YOUR_FOLDER_TO_MP4_FILES
+    ```
+    If you use the example dataset, the script will create `map_telemetry.json` and `test_telemetry.json` under the same folder of the video files.
+
+3. Execute the following command to run mapping:
+    ```shell
+    ./Examples/insta360 -i $PATH_TO_MAP_MP4 -j $PATH_TO_MAP_TELEMETRY -s ./Examples/atlas.osa
+    ```
+    this will perform SLAM with the video and save the generated map to `atlas.osa`. 
+    [[Example execution video]](https://drive.google.com/file/d/1uMNE-61t5jSlJ-I2zda_3qhbc9YE6wgr/view?usp=sharing)
+  
+4. Execute the following command to run localization with a given map:
+    ```shell
+    ./Examples/insta360 -i $PATH_TO_TEST_MP4 -j $PATH_TO_TEST_TELEMETRY -l ./Examples/atlas.osa -v -t -o ./Examples/test_trajectory.csv
+    ```
+    this will perform localization with the map previously generated, and save the camera trajectory to `test_trajectory.csv`
+    [[Example execution video]](https://drive.google.com/file/d/1IHDHP57vvdI_exqKbY5ZL3jgJFBZdxNo/view?usp=sharing)
+
+    - `-t` means `tracking-only`, i.e. we are only performing localization, no mapping.
+    - `-v` means `visual-only`, i.e. we are tracking without using imu information.
+
+    You can take a look at [insta360.cc](Examples/insta360.cc) to see different command line options, and play around with them to see how different options affect performance. Empirically, using IMU to create a map first, then localize visually-only using the map provides good results.
+    After getting the output trajectory csv file, you can visualize the trajectory with 
+    ```shell
+    python scripts/visualize_trajectory.py -i $PATH_TO_CSV
+    ```
+
+## Run D435i Example
+
+  After connecting the camera to PC, you can directly run 
+  ```shell
+  ./Examples/d435i_vi ./Vocabulary/ORBvoc.txt ./Examples/D435i.yaml 
+  ```
+  `d435i_vi` will run visual_inertial SLAM, while `d435i_v` will run visual-only.
+
+## Misc
+
+- This codebase is inspired by the following great repo:
+
+  - [The original ORB_SLAM3 Repo](https://github.com/UZ-SLAMLab/ORB_SLAM3/issues/736)
+  - [Mauhing Yip's ORB_SLAM3 Fork](https://github.com/Mauhing/ORB_SLAM3/tree/master)
+  - [Cheng Chi's ORB_SLAM3 Fork](https://github.com/cheng-chi/ORB_SLAM3)
+  - [ExifTool](https://exiftool.org/index.html)
+  - [OpenImuCameraCalibrator](https://github.com/urbste/OpenImuCameraCalibrator)
+  - [Kalibr](https://github.com/ethz-asl/kalibr)
+
+
+
+
+
+
+
+
+
+
+
+---
+# Below is the original README
+
+
+
 # ORB-SLAM3
 
 ### V1.0, December 22th, 2021

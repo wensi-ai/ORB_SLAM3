@@ -46,7 +46,7 @@ def main():
     args = parser.parse_args()
 
     path_to_file = os.path.dirname(os.path.abspath(__file__))
-    path_to_src = os.path.join(path_to_file,"../")
+    path_to_src = os.path.join(path_to_file, "..")
     telemetry_conv = TelemetryConverter()
 
     # create output folder
@@ -60,7 +60,7 @@ def main():
     cam_processed_telemetry = pjoin(output_path,"imu0.csv")
     with open(cam_raw_telemetry, 'w') as f:
         cam_extraction = Popen([
-            f"{path_to_src}/third_party/exiftool/exiftool", 
+            f"{path_to_src}/Thirdparty/exiftool/exiftool", 
             "-m", "-ee", args.input_video
         ], stdout=f)
         cam_extraction.wait()
