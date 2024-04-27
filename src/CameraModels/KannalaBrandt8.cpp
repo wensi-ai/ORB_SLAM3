@@ -180,6 +180,8 @@ namespace ORB_SLAM3 {
             Eigen::Matrix3f K = this->toK_();
             tvr = new TwoViewReconstruction(K);
         }
+        vP3D.clear();
+        vbTriangulated.clear();
 
         //Correct FishEye distortion
         std::vector<cv::KeyPoint> vKeysUn1 = vKeys1, vKeysUn2 = vKeys2;
