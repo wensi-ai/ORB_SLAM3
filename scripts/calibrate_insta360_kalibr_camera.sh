@@ -6,7 +6,7 @@
 
 DOWNSAMPLE_FAC=2
 
-BASEPATH=/home/svl/Documents/Files/SLAM/insta
+BASEPATH=${HOME}/Documents/Files/SLAM/insta
 DATASET=kalibr_1080_linear
 
 
